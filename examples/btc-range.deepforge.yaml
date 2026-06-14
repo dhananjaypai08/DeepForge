@@ -1,0 +1,22 @@
+version: "0.1"
+name: BTC range harvest
+asset: BTC
+capital:
+  amount: 50
+  quote: DUSDC
+view:
+  kind: range
+  bias: neutral
+expiry:
+  mode: nearest
+risk:
+  maxLossPct: 60
+allocations:
+  - primitive: range
+    weightPct: 60
+    bounds:
+      widthBps: 50
+  - primitive: binary_up
+    weightPct: 40
+    strike:
+      atmOffsetBps: 0

@@ -1,0 +1,28 @@
+{
+  "name": "@deepforge/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "deepforge": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/cli.ts",
+    "start": "node dist/cli.js"
+  },
+  "dependencies": {
+    "@deepforge/compiler": "workspace:*",
+    "@deepforge/config": "workspace:*",
+    "@deepforge/intent": "workspace:*",
+    "@deepforge/ir": "workspace:*",
+    "@deepforge/predict-sdk": "workspace:*",
+    "@deepforge/risk": "workspace:*",
+    "@deepforge/simulator": "workspace:*",
+    "@mysten/sui": "^1.45.0",
+    "commander": "^12.1.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2"
+  }
+}

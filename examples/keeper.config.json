@@ -1,0 +1,22 @@
+{
+  "network": "testnet",
+  "pollMs": 30000,
+  "redeem": [
+    {
+      "managerId": "0xYOUR_MANAGER_ID",
+      "oracleId": "0xORACLE_ID",
+      "expiryMs": 0,
+      "kind": "binary",
+      "direction": 0,
+      "strikeScaled": "65400000000000",
+      "quantity": "30000000"
+    }
+  ],
+  "autoRoll": [
+    {
+      "strategyFile": "examples/btc-range.deepforge.yaml",
+      "managerId": "0xYOUR_MANAGER_ID",
+      "currentOracleId": "0xORACLE_ID"
+    }
+  ]
+}

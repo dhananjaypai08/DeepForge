@@ -1,0 +1,21 @@
+{
+  "name": "@deepforge/keeper",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@deepforge/compiler": "workspace:*",
+    "@deepforge/config": "workspace:*",
+    "@deepforge/ir": "workspace:*",
+    "@deepforge/predict-sdk": "workspace:*",
+    "@mysten/sui": "^1.45.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2"
+  }
+}
