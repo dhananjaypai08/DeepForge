@@ -45,8 +45,8 @@ describe("compile", () => {
     expect(res.plan.legs).toHaveLength(2);
     const range = res.plan.legs.find((l) => l.kind === "range");
     expect(range).toBeDefined();
-    // 60% of $50 = $30 -> 30_000_000 base units
-    expect(range?.budgetBaseUnits).toBe(30_000_000n);
+    // 60% of $2 = $1.2 -> 1_200_000 base units
+    expect(range?.budgetBaseUnits).toBe(1_200_000n);
     const binary = res.plan.legs.find((l) => l.kind === "binary");
     expect(binary).toBeDefined();
   });

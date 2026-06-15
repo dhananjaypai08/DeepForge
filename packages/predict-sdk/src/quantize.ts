@@ -92,6 +92,14 @@ export async function buildExecutionPlan(
     }
   }
 
+  // Deposit a small slippage buffer above the previewed cost: the live price can
+  // tick up between this devInspect preview and on-chain execution, and mint
+  // pulls the *actual* cost from the manager — too tight a deposit aborts the
+  // withdraw. Any unused buffer simply stays in the manager (withdrawable).
+  const SLIPPAGE_BPS = 500n; // 5%
+  const bufferedDeposit =
+    depositBase === 0n ? 0n : depositBase + (depositBase * SLIPPAGE_BPS) / 10_000n;
+
   return {
     irHash: plan.irHash,
     name: plan.name,
@@ -99,9 +107,9 @@ export async function buildExecutionPlan(
     expiryMs: plan.expiryMs,
     quoteType: ctx.deployment.dusdcType,
     plpType: ctx.deployment.plpType,
-    depositBaseUnits: depositBase.toString(),
+    depositBaseUnits: bufferedDeposit.toString(),
     supplyBaseUnits: supplyBase.toString(),
-    totalQuoteBaseUnits: (depositBase + supplyBase).toString(),
+    totalQuoteBaseUnits: (bufferedDeposit + supplyBase).toString(),
     steps,
     unitCosts,
   };

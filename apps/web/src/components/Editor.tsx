@@ -47,7 +47,7 @@ function IntentMode({
   generating: boolean;
 }) {
   const [text, setText] = useState(
-    "BTC stays in a tight range for the next hour. I can risk $50, want max yield, cap loss at 20%.",
+    "BTC stays in a tight range for the next hour. Keep it small — risk about $2, cap loss at 20%.",
   );
   return (
     <div className="mode">

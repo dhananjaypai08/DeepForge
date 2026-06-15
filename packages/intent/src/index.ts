@@ -42,6 +42,8 @@ function systemPrompt(spotHint?: number): string {
     "  binary_up + binary_down. Directional view -> a single binary_up/binary_down.",
     "- Use `hedge` (an OTM binary) only when the user asks to cap downside.",
     "- Map a stated risk budget to risk.maxLossPct (percentage of capital).",
+    "- TESTNET: keep capital.amount very small (default 2 DUSDC; never exceed 25)",
+    "  unless the user explicitly names a larger dollar amount to deploy.",
     "- expiry.mode is 'rolling' if the user wants auto-roll, else 'nearest';",
     "  set expiry.horizonMs from any stated time window (e.g. an hour = 3600000).",
     spotHint

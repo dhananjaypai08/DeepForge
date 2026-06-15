@@ -23,7 +23,7 @@ export async function buildMarketContext(
   const nowMs = opts.nowMs ?? Date.now();
   let ids = opts.oracleIds ?? [];
   if (ids.length === 0) ids = await discoverOracleIds(ctx);
-  ids = ids.slice(0, opts.maxOracles ?? 80);
+  ids = ids.slice(0, opts.maxOracles ?? 250);
   const oracles: OracleInfo[] = await getOraclesByIds(ctx, ids, {
     nowMs,
     tickSize: opts.tickSize,

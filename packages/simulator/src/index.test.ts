@@ -92,10 +92,10 @@ describe("simulate", () => {
     };
     const res = compile(ir, mkCtx());
     if (!res.ok) throw new Error("compile failed");
-    // $50 at unit cost 0.5 => $100 face => $50 net if win
+    // $2 at unit cost 0.5 => $4 face => $2 net if win
     const report = simulate(res.plan, oracle, { 0: 0.5 });
     expect(report.legs[0]?.unitCost).toBe(0.5);
-    expect(report.legs[0]?.payoffIfWinUsd).toBeCloseTo(100, 2);
-    expect(report.bestUsd).toBeCloseTo(50, 2);
+    expect(report.legs[0]?.payoffIfWinUsd).toBeCloseTo(4, 2);
+    expect(report.bestUsd).toBeCloseTo(2, 2);
   });
 });

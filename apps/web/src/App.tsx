@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import {
   ConnectButton,
   useCurrentAccount,
-  useSignTransaction,
+  useSignAndExecuteTransaction,
   useSuiClient,
 } from "@mysten/dapp-kit";
 import { exampleIR, hashIR, validateIR, type StrategyIR } from "@deepforge/ir";
@@ -25,13 +25,14 @@ import {
 export function App() {
   const account = useCurrentAccount();
   const client = useSuiClient();
-  const { mutateAsync: signTransaction } = useSignTransaction();
+  const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction();
   const sign: SignFn = async (input) => {
-    const res = await signTransaction({
+    const res = await signAndExecute({
       transaction: input.transaction,
       chain: "sui:testnet",
+      ...(account ? { account } : {}),
     });
-    return { bytes: res.bytes, signature: res.signature };
+    return { digest: res.digest };
   };
 
   const [ir, setIr] = useState<StrategyIR>(exampleIR());
@@ -89,6 +90,21 @@ export function App() {
     }
   }
 
+  /** Turn opaque wallet errors into actionable guidance. */
+  function humanize(e: unknown): string {
+    const msg = (e as Error)?.message ?? String(e);
+    if (/password/i.test(msg)) {
+      return (
+        `Wallet reported a "password"/decrypt error. Gas was already verified, so this is ` +
+        `a Slush signing issue — not your password or this app. Try: lock and unlock the ` +
+        `Slush extension, confirm it's on Testnet and updated, then retry. If it persists, ` +
+        `connect a different wallet (Suiet / Nightly), or run the same step from the CLI ` +
+        `(node apps/cli/dist/cli.js publish …), which signs directly and is verified working.`
+      );
+    }
+    return msg;
+  }
+
   /** Fail fast with a clear message if the wallet can't pay gas. */
   async function ensureGas(): Promise<void> {
     if (!account) throw new Error("connect a wallet first");
@@ -112,7 +128,7 @@ export function App() {
       const digest = await deployStrategy(client, sign, result.execPlan, account.address);
       setNotice(`Executed on DeepBook Predict — digest ${digest}`);
     } catch (e) {
-      setError((e as Error).message);
+      setError(humanize(e));
     } finally {
       setBusy(undefined);
     }
@@ -132,7 +148,7 @@ export function App() {
       setNotice(`${forkParent ? "Forked" : "Published"} Strategy object ${id}`);
       setForkParent(undefined);
     } catch (e) {
-      setError((e as Error).message);
+      setError(humanize(e));
     } finally {
       setBusy(undefined);
     }

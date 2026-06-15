@@ -2,7 +2,7 @@ version: "0.1"
 name: BTC range harvest
 asset: BTC
 capital:
-  amount: 50
+  amount: 2
   quote: DUSDC
 view:
   kind: range

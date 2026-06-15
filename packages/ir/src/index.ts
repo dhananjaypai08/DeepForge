@@ -111,7 +111,7 @@ export function exampleIR(): StrategyIR {
     version: IR_VERSION,
     name: "BTC range harvest",
     asset: "BTC",
-    capital: { amount: 50, quote: "DUSDC" },
+    capital: { amount: 2, quote: "DUSDC" },
     view: { kind: "range", bias: "neutral" },
     expiry: { mode: "nearest", horizonMs: 60 * 60 * 1000 },
     risk: { maxLossPct: 40 },

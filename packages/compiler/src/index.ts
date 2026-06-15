@@ -24,6 +24,12 @@ export { roundToTick, atmSigmaMove, atmTotalVariance } from "./strike.js";
 const MIN_TIME_TO_EXPIRY_MS = 60_000;
 /** Below this we still compile but warn. */
 const SHORT_EXPIRY_WARN_MS = 5 * 60_000;
+/**
+ * When selecting an oracle we ignore any expiring within this window — a
+ * near-dead oracle has ~zero implied vol, so ATM strikes price at 0/1 and the
+ * protocol can't quote them. We want a live, tradeable cycle.
+ */
+const SELECT_MIN_TTE_MS = 3 * 60_000;
 
 /**
  * Select the oracle to use: matching underlying + ACTIVE, and whose expiry best
@@ -33,15 +39,20 @@ export function selectOracle(
   ir: StrategyIR,
   ctx: MarketContext,
 ): { oracle?: OracleInfo; error?: string } {
-  const candidates = ctx.oracles.filter(
+  const live = ctx.oracles.filter(
     (o) =>
       o.underlying.toUpperCase() === ir.asset &&
       o.status === ORACLE_STATUS.ACTIVE &&
       o.expiryMs > ctx.nowMs,
   );
+  // Prefer oracles with comfortable time-to-expiry; fall back to any future one.
+  const candidates =
+    live.filter((o) => o.expiryMs > ctx.nowMs + SELECT_MIN_TTE_MS).length > 0
+      ? live.filter((o) => o.expiryMs > ctx.nowMs + SELECT_MIN_TTE_MS)
+      : live;
   if (candidates.length === 0) {
     return {
-      error: `no ACTIVE ${ir.asset} oracle with future expiry available`,
+      error: `no tradeable ${ir.asset} oracle available right now (all are settled or about to expire) — try again in a moment`,
     };
   }
   const target =
