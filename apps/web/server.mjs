@@ -1,7 +1,21 @@
 // Minimal backend that holds the OpenRouter key and exposes /api/intent.
 // Keeps the LLM key server-side; the browser never sees it.
+import { existsSync } from "node:fs";
 import express from "express";
-import { intentToIR } from "@deepforge/intent";
+
+// Load env from the repo root .env (or local .env) if present.
+for (const p of ["../../.env", ".env"]) {
+  if (existsSync(p)) {
+    try {
+      process.loadEnvFile(p);
+      break;
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+const { intentToIR } = await import("@deepforge/intent");
 
 const app = express();
 app.use(express.json());

@@ -18,7 +18,7 @@ export interface IntentOptions {
 }
 
 const DEFAULT_BASE = "https://openrouter.ai/api/v1";
-const DEFAULT_MODEL = "anthropic/claude-3.5-sonnet";
+const DEFAULT_MODEL = "anthropic/claude-sonnet-4.5";
 
 const TOOL_NAME = "emit_strategy";
 

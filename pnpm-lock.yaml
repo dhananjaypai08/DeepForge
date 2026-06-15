@@ -66,6 +66,9 @@ importers:
       '@deepforge/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@deepforge/intent':
+        specifier: workspace:*
+        version: link:../../packages/intent
       '@deepforge/ir':
         specifier: workspace:*
         version: link:../../packages/ir

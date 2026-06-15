@@ -13,6 +13,7 @@
   "dependencies": {
     "@deepforge/compiler": "workspace:*",
     "@deepforge/config": "workspace:*",
+    "@deepforge/intent": "workspace:*",
     "@deepforge/ir": "workspace:*",
     "@deepforge/predict-sdk": "workspace:*",
     "@deepforge/risk": "workspace:*",
