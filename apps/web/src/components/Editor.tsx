@@ -2,33 +2,37 @@ import { useEffect, useState } from "react";
 import {
   parseDeepforgeFile,
   serializeDeepforgeFile,
-  validateIR,
   type Allocation,
   type StrategyIR,
 } from "@deepforge/ir";
 
-type Mode = "intent" | "visual" | "dsl";
+export type Mode = "intent" | "visual" | "dsl";
 
 export function Editor({
   ir,
   onChange,
-  spotHint,
+  mode,
+  onModeChange,
+  onGenerate,
+  generating,
 }: {
   ir: StrategyIR;
   onChange: (ir: StrategyIR) => void;
-  spotHint?: number;
+  mode: Mode;
+  onModeChange: (m: Mode) => void;
+  onGenerate: (text: string) => void;
+  generating: boolean;
 }) {
-  const [mode, setMode] = useState<Mode>("dsl");
   return (
     <div className="editor">
       <div className="tabs">
         {(["intent", "visual", "dsl"] as Mode[]).map((m) => (
-          <button key={m} className={mode === m ? "tab active" : "tab"} onClick={() => setMode(m)}>
+          <button key={m} className={mode === m ? "tab active" : "tab"} onClick={() => onModeChange(m)}>
             {m === "intent" ? "Intent" : m === "visual" ? "Visual" : "DSL"}
           </button>
         ))}
       </div>
-      {mode === "intent" && <IntentMode onChange={onChange} spotHint={spotHint} />}
+      {mode === "intent" && <IntentMode onGenerate={onGenerate} generating={generating} />}
       {mode === "visual" && <VisualMode ir={ir} onChange={onChange} />}
       {mode === "dsl" && <DslMode ir={ir} onChange={onChange} />}
     </div>
@@ -36,45 +40,25 @@ export function Editor({
 }
 
 function IntentMode({
-  onChange,
-  spotHint,
+  onGenerate,
+  generating,
 }: {
-  onChange: (ir: StrategyIR) => void;
-  spotHint?: number;
+  onGenerate: (text: string) => void;
+  generating: boolean;
 }) {
   const [text, setText] = useState(
     "BTC stays in a tight range for the next hour. I can risk $50, want max yield, cap loss at 20%.",
   );
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string>();
-  async function generate() {
-    setBusy(true);
-    setErr(undefined);
-    try {
-      const res = await fetch("/api/intent", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ text, spotHint }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "intent failed");
-      const v = validateIR(data.ir);
-      if (!v.ok) throw new Error(v.errors.map((e) => e.message).join("; "));
-      onChange(v.ir);
-    } catch (e) {
-      setErr((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
   return (
     <div className="mode">
-      <p className="muted">Describe your view in plain English. Claude (via OpenRouter) compiles it to the IR.</p>
+      <p className="muted">
+        Describe your view in plain English. It reads the live market, compiles to the IR, then
+        simulates — all in one click.
+      </p>
       <textarea value={text} onChange={(e) => setText(e.target.value)} rows={5} />
-      <button className="btn" disabled={busy} onClick={generate}>
-        {busy ? "Compiling intent…" : "Generate strategy"}
+      <button className="btn primary" disabled={generating} onClick={() => onGenerate(text)}>
+        {generating ? "Working…" : "Generate strategy →"}
       </button>
-      {err && <div className="error">{err}</div>}
     </div>
   );
 }

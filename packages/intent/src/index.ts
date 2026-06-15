@@ -18,7 +18,7 @@ export interface IntentOptions {
 }
 
 const DEFAULT_BASE = "https://openrouter.ai/api/v1";
-const DEFAULT_MODEL = "anthropic/claude-sonnet-4.5";
+const DEFAULT_MODEL = "openai/gpt-4o-mini";
 
 const TOOL_NAME = "emit_strategy";
 
@@ -32,17 +32,21 @@ function systemPrompt(spotHint?: number): string {
     "Rules:",
     `- version must be "${IR_VERSION}". asset is "BTC". capital.quote is "DUSDC".`,
     "- allocations[].weightPct MUST sum to exactly 100.",
-    "- Prefer ATM-relative strikes via strike.atmOffsetBps or strike.atmSigma when",
-    "  the user gives a directional/relative view; use strike.price only when the",
-    "  user names an absolute price level.",
-    "- For a 'stay between X and Y' view use a single `range` allocation with",
-    "  bounds.lowerPrice / bounds.upperPrice. For a volatility (big-move, unknown",
-    "  direction) view, combine binary_up and binary_down legs.",
+    "- CRITICAL: do NOT use absolute prices (strike.price, bounds.lowerPrice,",
+    "  bounds.upperPrice) UNLESS the user explicitly names a dollar level. For all",
+    "  relative/qualitative views use ATM-relative selectors only:",
+    "    • range  -> bounds.widthBps (e.g. 'tight'≈50, 'normal'≈150, 'wide'≈400)",
+    "    • binary -> strike.atmOffsetBps (0 = at-the-money; +above / -below spot)",
+    "  This keeps strikes on the live oracle grid regardless of price.",
+    "- 'stay in a range' -> one `range` leg. 'big move, unknown direction' ->",
+    "  binary_up + binary_down. Directional view -> a single binary_up/binary_down.",
     "- Use `hedge` (an OTM binary) only when the user asks to cap downside.",
     "- Map a stated risk budget to risk.maxLossPct (percentage of capital).",
     "- expiry.mode is 'rolling' if the user wants auto-roll, else 'nearest';",
-    "  set expiry.horizonMs from any stated time window.",
-    spotHint ? `- Current BTC spot is approximately $${spotHint}.` : "",
+    "  set expiry.horizonMs from any stated time window (e.g. an hour = 3600000).",
+    spotHint
+      ? `- Current BTC spot is ~$${Math.round(spotHint)}. If the user gives an absolute price, it MUST be within ~10% of this; otherwise use relative selectors.`
+      : "- You do NOT know the live spot, so you MUST use relative selectors (widthBps / atmOffsetBps), never absolute prices.",
   ]
     .filter(Boolean)
     .join("\n");

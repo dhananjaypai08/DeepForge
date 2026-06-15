@@ -37,7 +37,7 @@ function ctx(): MarketContext {
 }
 
 describe("compile", () => {
-  it("compiles the example range+plp strategy", () => {
+  it("compiles the example range+binary strategy", () => {
     const res = compile(exampleIR(), ctx());
     expect(res.ok).toBe(true);
     if (!res.ok) return;
@@ -45,8 +45,10 @@ describe("compile", () => {
     expect(res.plan.legs).toHaveLength(2);
     const range = res.plan.legs.find((l) => l.kind === "range");
     expect(range).toBeDefined();
-    // 70% of $300 = $210 -> 210_000_000 base units
-    expect(range?.budgetBaseUnits).toBe(210_000_000n);
+    // 60% of $50 = $30 -> 30_000_000 base units
+    expect(range?.budgetBaseUnits).toBe(30_000_000n);
+    const binary = res.plan.legs.find((l) => l.kind === "binary");
+    expect(binary).toBeDefined();
   });
 
   it("rounds strikes to the oracle tick size", () => {

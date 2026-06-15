@@ -17,23 +17,33 @@ import {
 import type { RiskReport } from "@deepforge/risk";
 import type { SimulationReport } from "@deepforge/simulator";
 
+/**
+ * Sign a transaction with the connected wallet, returning the signed bytes +
+ * signature. We then execute with our own testnet client (below), so the wallet
+ * only ever signs — no reliance on the wallet's execute path.
+ */
 export type SignFn = (input: {
   transaction: Transaction;
-}) => Promise<{ digest: string }>;
+}) => Promise<{ bytes: string; signature: string }>;
 
 const ctx = () => makeContext({ network: "testnet" });
 const microUsd = (x: number) => BigInt(Math.round(Math.abs(x) * 1e6));
 
 async function execAndWait(
-  client: SuiClient,
+  _client: SuiClient,
   sign: SignFn,
   tx: Transaction,
 ): Promise<SuiTransactionBlockResponse> {
-  const { digest } = await sign({ transaction: tx });
-  return client.waitForTransaction({
-    digest,
+  const { bytes, signature } = await sign({ transaction: tx });
+  const client = ctx().client;
+  const res = await client.executeTransactionBlock({
+    transactionBlock: bytes,
+    signature,
     options: { showObjectChanges: true, showEffects: true, showEvents: true },
   });
+  // Ensure the node has indexed effects before we read object changes.
+  await client.waitForTransaction({ digest: res.digest });
+  return res;
 }
 
 const mgrKey = (sender: string) => `df:mgr:testnet:${sender.toLowerCase()}`;

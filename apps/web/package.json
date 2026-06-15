@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "concurrently -k \"node server.mjs\" \"vite\"",
+    "dev": "concurrently -k \"node --watch server.mjs\" \"vite\"",
     "server": "node server.mjs",
     "build": "vite build",
     "typecheck": "tsc --noEmit",

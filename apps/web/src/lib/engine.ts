@@ -22,6 +22,18 @@ export interface PipelineResult {
   vault?: VaultState;
 }
 
+/** Read the live BTC forward/spot to ground intent strike selection. */
+export async function fetchSpotHint(): Promise<number | undefined> {
+  try {
+    const ctx = makeContext({ network: "testnet" });
+    const market = await buildMarketContext(ctx, { maxOracles: 8 });
+    const active = market.oracles.find((o) => o.status === 1) ?? market.oracles[0];
+    return active?.forward ?? active?.spot;
+  } catch {
+    return undefined;
+  }
+}
+
 /** Run the full compile -> quantize -> simulate -> risk pipeline in-browser. */
 export async function runPipeline(
   ir: StrategyIR,

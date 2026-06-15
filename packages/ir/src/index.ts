@@ -100,23 +100,28 @@ export function irJsonSchema(): Record<string, unknown> {
   >;
 }
 
-/** A minimal valid IR scaffold for `deepforge init`-style flows. */
+/**
+ * A minimal valid IR scaffold. Strikes are ATM-relative (offsets/widths around
+ * the live forward) rather than absolute prices, so it compiles cleanly against
+ * whatever the oracle's current spot is. The 1h horizon picks an oracle with
+ * enough implied vol to quote meaningful (non-degenerate) prices.
+ */
 export function exampleIR(): StrategyIR {
   return {
     version: IR_VERSION,
     name: "BTC range harvest",
     asset: "BTC",
-    capital: { amount: 300, quote: "DUSDC" },
-    view: { kind: "range", lower: 118000, upper: 120000, bias: "neutral" },
-    expiry: { mode: "nearest" },
-    risk: { maxLossPct: 10 },
+    capital: { amount: 50, quote: "DUSDC" },
+    view: { kind: "range", bias: "neutral" },
+    expiry: { mode: "nearest", horizonMs: 60 * 60 * 1000 },
+    risk: { maxLossPct: 40 },
     allocations: [
+      { primitive: "range", weightPct: 60, bounds: { widthBps: 75 } },
       {
-        primitive: "range",
-        weightPct: 70,
-        bounds: { lowerPrice: 118000, upperPrice: 120000 },
+        primitive: "binary_up",
+        weightPct: 40,
+        strike: { atmOffsetBps: 25 },
       },
-      { primitive: "plp", weightPct: 30 },
     ],
     autoRoll: false,
   };

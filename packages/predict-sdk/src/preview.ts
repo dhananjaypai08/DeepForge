@@ -23,7 +23,14 @@ export interface RangeKeyParams {
 }
 
 function decodeTwoU64(res: Awaited<ReturnType<DeepforgeContext["client"]["devInspectTransactionBlock"]>>): TradeAmounts {
-  if (res.error) throw new Error(`devInspect error: ${res.error}`);
+  if (res.error) {
+    const msg = String(res.error);
+    const hint =
+      /pricing_config|quote_spread|ask_bounds|MoveAbort/.test(msg)
+        ? " — the protocol couldn't quote this leg (strike likely off the oracle grid, or the model price is too close to 0/1 to price). Move the strike nearer the forward, widen/narrow the range, or pick a longer expiry."
+        : "";
+    throw new Error(`pricing preview reverted${hint}`);
+  }
   const rv = res.results?.at(-1)?.returnValues;
   if (!rv || rv.length < 2) {
     throw new Error(

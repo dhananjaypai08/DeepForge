@@ -29,103 +29,67 @@ export async function buildExecutionPlan(
 
   for (let i = 0; i < plan.legs.length; i++) {
     const leg = plan.legs[i]!;
-    if (leg.kind === "plp") {
-      supplyBase += leg.budgetBaseUnits;
-      steps.push({
-        op: "supply",
-        legLabel: leg.label,
-        amountBaseUnits: leg.budgetBaseUnits.toString(),
-      });
-      continue;
-    }
+    try {
+      if (leg.kind === "plp") {
+        supplyBase += leg.budgetBaseUnits;
+        steps.push({
+          op: "supply",
+          legLabel: leg.label,
+          amountBaseUnits: leg.budgetBaseUnits.toString(),
+        });
+        continue;
+      }
 
-    if (leg.kind === "binary") {
-      const probe = await previewBinary(
-        ctx,
-        {
+      if (leg.kind === "binary") {
+        const key = {
           oracleId: plan.oracleId,
           expiryMs: plan.expiryMs,
           strikeScaled: leg.strikeScaled,
           direction: leg.direction,
-        },
-        PROBE_QTY,
-        opts.sender,
-      );
-      if (probe.mintCostBase <= 0n) {
-        throw new Error(`leg ${i} (${leg.label}): zero/invalid mint cost at probe`);
-      }
-      const quantity = (leg.budgetBaseUnits * PROBE_QTY) / probe.mintCostBase;
-      if (quantity <= 0n) {
-        throw new Error(`leg ${i} (${leg.label}): budget too small to buy 1 unit`);
-      }
-      const actual = await previewBinary(
-        ctx,
-        {
+        };
+        const probe = await previewBinary(ctx, key, PROBE_QTY, opts.sender);
+        const quantity = invertQuantity(leg.budgetBaseUnits, probe.mintCostBase);
+        const actual = await previewBinary(ctx, key, quantity, opts.sender);
+        depositBase += actual.mintCostBase;
+        unitCosts[i] = Number(actual.mintCostBase) / Number(quantity);
+        steps.push({
+          op: "mint",
+          legLabel: leg.label,
           oracleId: plan.oracleId,
           expiryMs: plan.expiryMs,
-          strikeScaled: leg.strikeScaled,
+          strikeScaled: leg.strikeScaled.toString(),
           direction: leg.direction,
-        },
-        quantity,
-        opts.sender,
-      );
+          quantity: quantity.toString(),
+          costBaseUnits: actual.mintCostBase.toString(),
+        });
+        continue;
+      }
+
+      // range
+      const key = {
+        oracleId: plan.oracleId,
+        expiryMs: plan.expiryMs,
+        lowerScaled: leg.lowerScaled,
+        higherScaled: leg.higherScaled,
+      };
+      const probe = await previewRange(ctx, key, PROBE_QTY, opts.sender);
+      const quantity = invertQuantity(leg.budgetBaseUnits, probe.mintCostBase);
+      const actual = await previewRange(ctx, key, quantity, opts.sender);
       depositBase += actual.mintCostBase;
       unitCosts[i] = Number(actual.mintCostBase) / Number(quantity);
       steps.push({
-        op: "mint",
+        op: "mint_range",
         legLabel: leg.label,
         oracleId: plan.oracleId,
         expiryMs: plan.expiryMs,
-        strikeScaled: leg.strikeScaled.toString(),
-        direction: leg.direction,
+        lowerScaled: leg.lowerScaled.toString(),
+        higherScaled: leg.higherScaled.toString(),
         quantity: quantity.toString(),
         costBaseUnits: actual.mintCostBase.toString(),
       });
-      continue;
+    } catch (e) {
+      throw new Error(`leg ${i} (${leg.label}): ${(e as Error).message}`);
     }
-
-    // range
-    const probe = await previewRange(
-      ctx,
-      {
-        oracleId: plan.oracleId,
-        expiryMs: plan.expiryMs,
-        lowerScaled: leg.lowerScaled,
-        higherScaled: leg.higherScaled,
-      },
-      PROBE_QTY,
-      opts.sender,
-    );
-    if (probe.mintCostBase <= 0n) {
-      throw new Error(`leg ${i} (${leg.label}): zero/invalid range mint cost at probe`);
-    }
-    const quantity = (leg.budgetBaseUnits * PROBE_QTY) / probe.mintCostBase;
-    if (quantity <= 0n) {
-      throw new Error(`leg ${i} (${leg.label}): budget too small to buy 1 unit`);
-    }
-    const actual = await previewRange(
-      ctx,
-      {
-        oracleId: plan.oracleId,
-        expiryMs: plan.expiryMs,
-        lowerScaled: leg.lowerScaled,
-        higherScaled: leg.higherScaled,
-      },
-      quantity,
-      opts.sender,
-    );
-    depositBase += actual.mintCostBase;
-    unitCosts[i] = Number(actual.mintCostBase) / Number(quantity);
-    steps.push({
-      op: "mint_range",
-      legLabel: leg.label,
-      oracleId: plan.oracleId,
-      expiryMs: plan.expiryMs,
-      lowerScaled: leg.lowerScaled.toString(),
-      higherScaled: leg.higherScaled.toString(),
-      quantity: quantity.toString(),
-      costBaseUnits: actual.mintCostBase.toString(),
-    });
   }
 
   return {
@@ -141,4 +105,16 @@ export async function buildExecutionPlan(
     steps,
     unitCosts,
   };
+}
+
+/** quantity = budget / unitAsk, computed from a linear probe. */
+function invertQuantity(budgetBase: bigint, probeCostBase: bigint): bigint {
+  if (probeCostBase <= 0n) {
+    throw new Error("zero/invalid mint cost at probe");
+  }
+  const quantity = (budgetBase * PROBE_QTY) / probeCostBase;
+  if (quantity <= 0n) {
+    throw new Error("budget too small to buy 1 unit");
+  }
+  return quantity;
 }

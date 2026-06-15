@@ -2,14 +2,14 @@ import { useEffect, useState } from "react";
 import {
   ConnectButton,
   useCurrentAccount,
-  useSignAndExecuteTransaction,
+  useSignTransaction,
   useSuiClient,
 } from "@mysten/dapp-kit";
-import { exampleIR, hashIR, type StrategyIR } from "@deepforge/ir";
-import { Editor } from "./components/Editor.js";
+import { exampleIR, hashIR, validateIR, type StrategyIR } from "@deepforge/ir";
+import { Editor, type Mode } from "./components/Editor.js";
 import { GraphView } from "./components/GraphView.js";
 import { ActionsPanel, RiskPanel, SimPanel } from "./components/Panels.js";
-import { runPipeline, type PipelineResult } from "./lib/engine.js";
+import { fetchSpotHint, runPipeline, type PipelineResult } from "./lib/engine.js";
 import {
   deployStrategy,
   forkStrategy,
@@ -25,34 +25,90 @@ import {
 export function App() {
   const account = useCurrentAccount();
   const client = useSuiClient();
-  const { mutateAsync } = useSignAndExecuteTransaction();
-  const sign: SignFn = (input) => mutateAsync(input);
+  const { mutateAsync: signTransaction } = useSignTransaction();
+  const sign: SignFn = async (input) => {
+    const res = await signTransaction({
+      transaction: input.transaction,
+      chain: "sui:testnet",
+    });
+    return { bytes: res.bytes, signature: res.signature };
+  };
 
   const [ir, setIr] = useState<StrategyIR>(exampleIR());
+  const [mode, setMode] = useState<Mode>("intent");
   const [result, setResult] = useState<PipelineResult>();
   const [busy, setBusy] = useState<string>();
   const [error, setError] = useState<string>();
   const [notice, setNotice] = useState<string>();
   const [forkParent, setForkParent] = useState<string>();
 
-  async function compile() {
+  async function compileIr(target: StrategyIR) {
     setBusy("Compiling + simulating against live testnet…");
     setError(undefined);
     setResult(undefined);
     try {
-      setResult(await runPipeline(ir, { sender: account?.address }));
+      const r = await runPipeline(target, { sender: account?.address });
+      setResult(r);
+      return r;
     } catch (e) {
       setError((e as Error).message);
+      return undefined;
     } finally {
       setBusy(undefined);
     }
   }
 
+  const compile = () => compileIr(ir);
+
+  /** Intent flow: read market → compile intent to IR → show it → simulate. */
+  async function generateFromIntent(text: string) {
+    setError(undefined);
+    setNotice(undefined);
+    setResult(undefined);
+    try {
+      setBusy("Reading live market…");
+      const spotHint = await fetchSpotHint();
+      setBusy("Compiling intent → IR…");
+      const res = await fetch("/api/intent", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ text, spotHint }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "intent failed");
+      const v = validateIR(data.ir);
+      if (!v.ok) throw new Error(v.errors.map((e) => e.message).join("; "));
+      setIr(v.ir);
+      setMode("dsl"); // show the generated *.deepforge.yaml
+      setNotice(`Generated "${v.ir.name}" from intent — compiling…`);
+      await compileIr(v.ir);
+      setNotice(`Generated "${v.ir.name}" from intent.`);
+    } catch (e) {
+      setError((e as Error).message);
+      setBusy(undefined);
+    }
+  }
+
+  /** Fail fast with a clear message if the wallet can't pay gas. */
+  async function ensureGas(): Promise<void> {
+    if (!account) throw new Error("connect a wallet first");
+    const bal = await client.getBalance({ owner: account.address });
+    if (BigInt(bal.totalBalance) === 0n) {
+      throw new Error(
+        `Your connected wallet (${account.address.slice(0, 10)}…) has 0 testnet SUI for gas. ` +
+          `Copy this address and request SUI at faucet.sui.io (Testnet), then retry. ` +
+          `(A "wrong password" prompt from the wallet usually means this.)`,
+      );
+    }
+  }
+
   async function onDeploy() {
     if (!account || !result) return;
-    setBusy("Executing on testnet…");
+    setBusy("Checking gas…");
     setError(undefined);
     try {
+      await ensureGas();
+      setBusy("Executing on testnet…");
       const digest = await deployStrategy(client, sign, result.execPlan, account.address);
       setNotice(`Executed on DeepBook Predict — digest ${digest}`);
     } catch (e) {
@@ -64,9 +120,11 @@ export function App() {
 
   async function onPublish() {
     if (!account || !result) return;
-    setBusy(forkParent ? "Forking strategy object…" : "Minting strategy object…");
+    setBusy("Checking gas…");
     setError(undefined);
     try {
+      await ensureGas();
+      setBusy(forkParent ? "Forking strategy object…" : "Minting strategy object…");
       const irHash = hashIR(ir);
       const id = forkParent
         ? await forkStrategy(client, sign, forkParent, ir, irHash, result.risk, result.sim)
@@ -92,7 +150,14 @@ export function App() {
 
       <div className="cols">
         <section className="left">
-          <Editor ir={ir} onChange={setIr} spotHint={result?.oracle.spot} />
+          <Editor
+            ir={ir}
+            onChange={setIr}
+            mode={mode}
+            onModeChange={setMode}
+            onGenerate={generateFromIntent}
+            generating={!!busy}
+          />
           <div className="actions">
             <button className="btn primary" onClick={compile} disabled={!!busy}>
               Compile &amp; Simulate
@@ -104,12 +169,14 @@ export function App() {
               {forkParent ? "Publish fork" : "Publish strategy object"}
             </button>
           </div>
-          {busy && <div className="notice">{busy}</div>}
-          {notice && <div className="notice ok">{notice}</div>}
-          {error && <div className="error">{error}</div>}
-          {forkParent && (
-            <div className="notice">Forking from {forkParent.slice(0, 10)}… — edit and publish.</div>
-          )}
+          <div className="status-area">
+            {busy && <div className="notice">{busy}</div>}
+            {notice && <div className="notice ok">{notice}</div>}
+            {error && <div className="error">{error}</div>}
+            {forkParent && (
+              <div className="notice">Forking from {forkParent.slice(0, 10)}… — edit and publish.</div>
+            )}
+          </div>
         </section>
 
         <section className="right">
