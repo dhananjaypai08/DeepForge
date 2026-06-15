@@ -8,6 +8,7 @@ import {
 import { exampleIR, hashIR, validateIR, type StrategyIR } from "@deepforge/ir";
 import { Editor, type Mode } from "./components/Editor.js";
 import { GraphView } from "./components/GraphView.js";
+import { MathPanel } from "./components/MathPanel.js";
 import { ActionsPanel, RiskPanel, SimPanel } from "./components/Panels.js";
 import { fetchSpotHint, runPipeline, type PipelineResult } from "./lib/engine.js";
 import {
@@ -200,6 +201,7 @@ export function App() {
           {result && (
             <>
               <GraphView graph={result.graph} />
+              <MathPanel plan={result.plan} oracle={result.oracle} execPlan={result.execPlan} />
               <ActionsPanel plan={result.execPlan} />
               <SimPanel sim={result.sim} />
               <RiskPanel risk={result.risk} />
