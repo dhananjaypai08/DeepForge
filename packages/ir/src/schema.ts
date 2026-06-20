@@ -111,11 +111,10 @@ export const StrategyIR = z
       amount: usd,
       quote: QuoteAsset,
     }),
+    // Descriptive metadata only — actual strikes come from `allocations`.
     view: z
       .object({
         kind: z.enum(["range", "directional", "volatility"]),
-        lower: z.number().positive().finite().optional(),
-        upper: z.number().positive().finite().optional(),
         bias: z.enum(["up", "down", "neutral"]).optional(),
       })
       .optional(),

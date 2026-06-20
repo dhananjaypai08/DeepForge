@@ -1,16 +1,33 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   ConnectButton,
   useCurrentAccount,
   useSignAndExecuteTransaction,
   useSuiClient,
 } from "@mysten/dapp-kit";
+import {
+  Activity as ActivityIcon,
+  GitFork,
+  LayoutGrid,
+  Rocket,
+  Store,
+  UploadCloud,
+} from "lucide-react";
 import { exampleIR, hashIR, validateIR, type StrategyIR } from "@deepforge/ir";
-import { Editor, type Mode } from "./components/Editor.js";
-import { GraphView } from "./components/GraphView.js";
-import { MathPanel } from "./components/MathPanel.js";
-import { ActionsPanel, RiskPanel, SimPanel } from "./components/Panels.js";
-import { fetchSpotHint, runPipeline, type PipelineResult } from "./lib/engine.js";
+import { Editor, type Mode } from "@/components/Editor";
+import { GraphView } from "@/components/GraphView";
+import { MathPanel } from "@/components/MathPanel";
+import { ActionsPanel, RiskPanel, SimPanel } from "@/components/Panels";
+import { PipelineView } from "@/components/PipelineView";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  fetchSpotHint,
+  runPipeline,
+  type PipelineResult,
+  type StageEvent,
+} from "@/lib/engine";
 import {
   deployStrategy,
   forkStrategy,
@@ -21,9 +38,11 @@ import {
   type ReplayEvent,
   type SignFn,
   type StrategyCard,
-} from "./lib/onchain.js";
+} from "@/lib/onchain";
 
-export function App() {
+type Section = "studio" | "market" | "activity";
+
+export function App({ onHome }: { onHome?: () => void } = {}) {
   const account = useCurrentAccount();
   const client = useSuiClient();
   const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction();
@@ -36,9 +55,11 @@ export function App() {
     return { digest: res.digest };
   };
 
+  const [section, setSection] = useState<Section>("studio");
   const [ir, setIr] = useState<StrategyIR>(exampleIR());
   const [mode, setMode] = useState<Mode>("intent");
   const [result, setResult] = useState<PipelineResult>();
+  const [stages, setStages] = useState<Record<string, StageEvent>>({});
   const [busy, setBusy] = useState<string>();
   const [error, setError] = useState<string>();
   const [notice, setNotice] = useState<string>();
@@ -48,8 +69,12 @@ export function App() {
     setBusy("Compiling + simulating against live testnet…");
     setError(undefined);
     setResult(undefined);
+    setStages({});
     try {
-      const r = await runPipeline(target, { sender: account?.address });
+      const r = await runPipeline(target, {
+        sender: account?.address,
+        onStage: (e) => setStages((prev) => ({ ...prev, [e.key]: e })),
+      });
       setResult(r);
       return r;
     } catch (e) {
@@ -59,14 +84,21 @@ export function App() {
       setBusy(undefined);
     }
   }
-
   const compile = () => compileIr(ir);
 
-  /** Intent flow: read market → compile intent to IR → show it → simulate. */
   async function generateFromIntent(text: string) {
     setError(undefined);
     setNotice(undefined);
     setResult(undefined);
+    const NON_BTC = /\b(eth|ethereum|sol|solana|sui|doge|xrp|bnb|avax|ada|matic|link|arb|op)\b/i;
+    const other = text.match(NON_BTC);
+    if (other && !/\b(btc|bitcoin)\b/i.test(text)) {
+      setError(
+        `DeepBook Predict testnet only lists BTC markets - "${other[0].toUpperCase()}" isn't available. ` +
+          `Rephrase your intent for BTC (e.g. "BTC stays in a tight range this hour").`,
+      );
+      return;
+    }
     try {
       setBusy("Reading live market…");
       const spotHint = await fetchSpotHint();
@@ -81,8 +113,8 @@ export function App() {
       const v = validateIR(data.ir);
       if (!v.ok) throw new Error(v.errors.map((e) => e.message).join("; "));
       setIr(v.ir);
-      setMode("dsl"); // show the generated *.deepforge.yaml
-      setNotice(`Generated "${v.ir.name}" from intent — compiling…`);
+      setMode("dsl");
+      setNotice(`Generated "${v.ir.name}" from intent - compiling…`);
       await compileIr(v.ir);
       setNotice(`Generated "${v.ir.name}" from intent.`);
     } catch (e) {
@@ -91,30 +123,25 @@ export function App() {
     }
   }
 
-  /** Turn opaque wallet errors into actionable guidance. */
   function humanize(e: unknown): string {
     const msg = (e as Error)?.message ?? String(e);
     if (/password/i.test(msg)) {
       return (
-        `Wallet reported a "password"/decrypt error. Gas was already verified, so this is ` +
-        `a Slush signing issue — not your password or this app. Try: lock and unlock the ` +
-        `Slush extension, confirm it's on Testnet and updated, then retry. If it persists, ` +
-        `connect a different wallet (Suiet / Nightly), or run the same step from the CLI ` +
-        `(node apps/cli/dist/cli.js publish …), which signs directly and is verified working.`
+        `Wallet reported a "password"/decrypt error. Gas was already verified, so this is a Slush ` +
+        `signing issue - not your password or this app. Lock & unlock Slush (Testnet, updated), or ` +
+        `use a passphrase account / different wallet, then retry.`
       );
     }
     return msg;
   }
 
-  /** Fail fast with a clear message if the wallet can't pay gas. */
   async function ensureGas(): Promise<void> {
     if (!account) throw new Error("connect a wallet first");
     const bal = await client.getBalance({ owner: account.address });
     if (BigInt(bal.totalBalance) === 0n) {
       throw new Error(
-        `Your connected wallet (${account.address.slice(0, 10)}…) has 0 testnet SUI for gas. ` +
-          `Copy this address and request SUI at faucet.sui.io (Testnet), then retry. ` +
-          `(A "wrong password" prompt from the wallet usually means this.)`,
+        `Your wallet (${account.address.slice(0, 10)}…) has 0 testnet SUI for gas. ` +
+          `Request SUI at faucet.sui.io (Testnet), then retry.`,
       );
     }
   }
@@ -127,7 +154,7 @@ export function App() {
       await ensureGas();
       setBusy("Executing on testnet…");
       const digest = await deployStrategy(client, sign, result.execPlan, account.address);
-      setNotice(`Executed on DeepBook Predict — digest ${digest}`);
+      setNotice(`Executed on DeepBook Predict - digest ${digest}`);
     } catch (e) {
       setError(humanize(e));
     } finally {
@@ -155,74 +182,166 @@ export function App() {
     }
   }
 
+  const nav: { key: Section; label: string; icon: typeof LayoutGrid }[] = [
+    { key: "studio", label: "Studio", icon: LayoutGrid },
+    { key: "market", label: "Marketplace", icon: Store },
+    { key: "activity", label: "Activity", icon: ActivityIcon },
+  ];
+
   return (
-    <div className="app">
-      <header>
-        <div>
-          <h1>DeepForge</h1>
-          <span className="tagline">Compile intent into programmable DeepBook Predict strategies</span>
-        </div>
-        <ConnectButton />
-      </header>
-
-      <div className="cols">
-        <section className="left">
-          <Editor
-            ir={ir}
-            onChange={setIr}
-            mode={mode}
-            onModeChange={setMode}
-            onGenerate={generateFromIntent}
-            generating={!!busy}
-          />
-          <div className="actions">
-            <button className="btn primary" onClick={compile} disabled={!!busy}>
-              Compile &amp; Simulate
-            </button>
-            <button className="btn" onClick={onDeploy} disabled={!!busy || !result || !account}>
-              Deploy (execute)
-            </button>
-            <button className="btn" onClick={onPublish} disabled={!!busy || !result || !account}>
-              {forkParent ? "Publish fork" : "Publish strategy object"}
-            </button>
+    <div className="flex min-h-screen bg-background text-foreground">
+      {/* Sidebar */}
+      <aside className="fixed inset-y-0 left-0 flex w-60 flex-col border-r border-sidebar-border bg-sidebar p-4">
+        <button
+          onClick={() => onHome?.()}
+          className="mb-6 flex items-center gap-2 text-left"
+        >
+          <div className="flex size-8 items-center justify-center rounded-md bg-primary font-semibold text-primary-foreground">
+            DF
           </div>
-          <div className="status-area">
-            {busy && <div className="notice">{busy}</div>}
-            {notice && <div className="notice ok">{notice}</div>}
-            {error && <div className="error">{error}</div>}
-            {forkParent && (
-              <div className="notice">Forking from {forkParent.slice(0, 10)}… — edit and publish.</div>
-            )}
+          <div>
+            <div className="text-sm font-semibold leading-tight">DeepForge</div>
+            <div className="text-[10px] text-muted-foreground">compiler for DeepBook Predict</div>
           </div>
-        </section>
+        </button>
+        <nav className="flex flex-col gap-1">
+          {nav.map((n) => (
+            <button
+              key={n.key}
+              onClick={() => setSection(n.key)}
+              className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${
+                section === n.key
+                  ? "bg-sidebar-accent text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <n.icon className="size-4" />
+              {n.label}
+            </button>
+          ))}
+        </nav>
+        <div className="mt-auto text-[10px] text-muted-foreground">Sui Testnet · live</div>
+      </aside>
 
-        <section className="right">
-          {!result && <div className="placeholder">Compile a strategy to see the graph, simulation and risk.</div>}
-          {result && (
-            <>
-              <GraphView graph={result.graph} />
-              <MathPanel plan={result.plan} oracle={result.oracle} execPlan={result.execPlan} />
-              <ActionsPanel plan={result.execPlan} />
-              <SimPanel sim={result.sim} />
-              <RiskPanel risk={result.risk} />
-            </>
+      {/* Main */}
+      <div className="ml-60 flex flex-1 flex-col">
+        <header className="flex items-center justify-between border-b border-border px-6 py-3">
+          <h1 className="text-lg font-semibold capitalize">{section}</h1>
+          <ConnectButton />
+        </header>
+        <main className="flex-1 overflow-auto p-6">
+          {section === "studio" && (
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-[440px_1fr]">
+              <div className="flex flex-col gap-4 lg:sticky lg:top-0 lg:self-start">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm">Compose strategy</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Editor
+                      ir={ir}
+                      onChange={setIr}
+                      mode={mode}
+                      onModeChange={setMode}
+                      onGenerate={generateFromIntent}
+                      generating={!!busy}
+                    />
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <Button onClick={compile} disabled={!!busy}>
+                        Compile &amp; Simulate
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={onDeploy}
+                        disabled={!!busy || !result || !account}
+                        className="gap-1.5"
+                      >
+                        <Rocket className="size-4" /> Deploy
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={onPublish}
+                        disabled={!!busy || !result || !account}
+                        className="gap-1.5"
+                      >
+                        {forkParent ? <GitFork className="size-4" /> : <UploadCloud className="size-4" />}
+                        {forkParent ? "Publish fork" : "Publish"}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+                {(busy || notice || error || forkParent) && (
+                  <div className="flex flex-col gap-2">
+                    {busy && <Alert>{busy}</Alert>}
+                    {notice && <Alert tone="ok">{notice}</Alert>}
+                    {error && <Alert tone="bad">{error}</Alert>}
+                    {forkParent && (
+                      <Alert>Forking from {forkParent.slice(0, 10)}… - edit and publish.</Alert>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-4">
+                {!result && Object.keys(stages).length === 0 && (
+                  <div className="rounded-lg border border-dashed border-border p-14 text-center text-muted-foreground">
+                    Compile a strategy to see the pipeline, math, simulation and risk - all from live
+                    testnet data.
+                  </div>
+                )}
+                {Object.keys(stages).length > 0 && <PipelineView stages={stages} />}
+                {result && (
+                  <>
+                    <GraphView graph={result.graph} />
+                    <MathPanel plan={result.plan} oracle={result.oracle} execPlan={result.execPlan} />
+                    <ActionsPanel plan={result.execPlan} />
+                    <SimPanel sim={result.sim} />
+                    <RiskPanel risk={result.risk} />
+                  </>
+                )}
+              </div>
+            </div>
           )}
-        </section>
-      </div>
 
-      <Marketplace
-        client={client}
-        onFork={async (id) => {
-          try {
-            setIr(await loadStrategyIR(client, id));
-            setForkParent(id);
-            setNotice(undefined);
-          } catch (e) {
-            setError((e as Error).message);
-          }
-        }}
-      />
-      {account && <Replay client={client} sender={account.address} />}
+          {section === "market" && (
+            <Marketplace
+              client={client}
+              onFork={async (id) => {
+                try {
+                  setIr(await loadStrategyIR(client, id));
+                  setForkParent(id);
+                  setNotice(undefined);
+                  setSection("studio");
+                  setMode("dsl");
+                } catch (e) {
+                  setError((e as Error).message);
+                }
+              }}
+            />
+          )}
+
+          {section === "activity" &&
+            (account ? (
+              <Replay client={client} sender={account.address} />
+            ) : (
+              <div className="text-muted-foreground">Connect a wallet to see your activity.</div>
+            ))}
+        </main>
+      </div>
+    </div>
+  );
+}
+
+function Alert({ children, tone }: { children: ReactNode; tone?: "ok" | "bad" }) {
+  const cls =
+    tone === "bad"
+      ? "border-destructive/50 bg-destructive/10 text-destructive"
+      : tone === "ok"
+        ? "border-success/40 bg-success/5"
+        : "border-border bg-secondary/40";
+  return (
+    <div className={`whitespace-pre-wrap break-words rounded-md border p-3 text-xs ${cls}`}>
+      {children}
     </div>
   );
 }
@@ -241,26 +360,40 @@ function Marketplace({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return (
-    <section className="market">
-      <h2>
-        Strategy marketplace <button className="btn ghost small" onClick={refresh}>↻</button>
-      </h2>
-      <div className="cards">
-        {items.length === 0 && <div className="muted">No published strategies yet.</div>}
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          On-chain, forkable Strategy objects (live from <code>StrategyPublished</code> events).
+        </p>
+        <Button variant="outline" size="sm" onClick={refresh}>
+          Refresh
+        </Button>
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {items.length === 0 && (
+          <div className="text-sm text-muted-foreground">No published strategies yet.</div>
+        )}
         {items.map((s) => (
-          <div className="card" key={s.id}>
-            <div className="card-title">{s.name}</div>
-            <div className="muted small">by {s.author.slice(0, 10)}…</div>
-            <div className="card-meta">
-              risk {s.riskScore}/100 {s.parent ? "· fork" : ""}
-            </div>
-            <button className="btn ghost small" onClick={() => onFork(s.id)}>
-              Fork
-            </button>
-          </div>
+          <Card key={s.id}>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between text-sm">
+                {s.name}
+                {s.parent && <Badge variant="secondary">fork</Badge>}
+              </CardTitle>
+              <span className="font-mono text-[11px] text-muted-foreground">
+                by {s.author.slice(0, 12)}…
+              </span>
+            </CardHeader>
+            <CardContent className="flex items-center justify-between">
+              <Badge variant="outline">risk {s.riskScore}/100</Badge>
+              <Button size="sm" variant="secondary" className="gap-1" onClick={() => onFork(s.id)}>
+                <GitFork className="size-3.5" /> Fork
+              </Button>
+            </CardContent>
+          </Card>
         ))}
       </div>
-    </section>
+    </div>
   );
 }
 
@@ -275,27 +408,29 @@ function Replay({
   useEffect(() => {
     listActivity(client, sender).then(setEvents).catch(() => {});
   }, [client, sender]);
-  if (events.length === 0) return null;
+  if (events.length === 0)
+    return <div className="text-muted-foreground">No activity yet - publish or deploy a strategy.</div>;
   return (
-    <section className="replay">
-      <h2>Activity replay</h2>
-      <div className="timeline">
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm">Activity timeline</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
         {events.map((e, i) => (
-          <div className="tl-item" key={i}>
-            <div className="tl-dot" />
-            <div className="tl-body">
-              <strong>{e.label}</strong>
-              <a
-                href={`https://suiscan.xyz/testnet/tx/${e.digest}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                {e.digest.slice(0, 10)}…
-              </a>
-            </div>
+          <div key={i} className="flex items-center gap-3">
+            <span className="size-2 rounded-full bg-primary shadow-[0_0_0_3px_var(--secondary)]" />
+            <span className="text-sm">{e.label}</span>
+            <a
+              className="ml-auto font-mono text-xs text-primary hover:underline"
+              href={`https://suiscan.xyz/testnet/tx/${e.digest}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {e.digest.slice(0, 10)}…
+            </a>
           </div>
         ))}
-      </div>
-    </section>
+      </CardContent>
+    </Card>
   );
 }

@@ -1,51 +1,68 @@
+import { ArrowRight } from "lucide-react";
 import type { StrategyGraph } from "@deepforge/compiler";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const COLORS: Record<string, string> = {
-  capital: "#2dd4bf",
-  allocator: "#a78bfa",
-  binary: "#f59e0b",
-  range: "#38bdf8",
-  plp: "#34d399",
-  hedge: "#fb7185",
-  settlement: "#94a3b8",
-  autoroll: "#c084fc",
-  exit: "#64748b",
+  capital: "var(--chart-2)",
+  allocator: "var(--chart-5)",
+  binary: "var(--chart-3)",
+  range: "var(--chart-1)",
+  plp: "var(--chart-2)",
+  hedge: "var(--chart-4)",
+  settlement: "var(--muted-foreground)",
+  autoroll: "var(--chart-5)",
+  exit: "var(--muted-foreground)",
 };
 
-/** Render the strategy DAG as a simple layered flow (capital → legs → exit). */
 export function GraphView({ graph }: { graph: StrategyGraph }) {
   const legNodes = graph.nodes.filter((n) =>
     ["binary", "range", "plp", "hedge"].includes(n.kind),
   );
   const node = (id: string) => graph.nodes.find((n) => n.id === id)!;
-  const chip = (id: string) => {
+  const hasRoll = graph.nodes.some((n) => n.kind === "autoroll");
+
+  const Chip = ({ id }: { id: string }) => {
     const n = node(id);
     return (
-      <div key={id} className="node" style={{ borderColor: COLORS[n.kind] }}>
-        <div className="node-kind" style={{ color: COLORS[n.kind] }}>
+      <div
+        className="rounded-md border border-border border-l-2 bg-secondary/40 px-3 py-2 min-w-[112px]"
+        style={{ borderLeftColor: COLORS[n.kind] }}
+      >
+        <div className="text-[10px] uppercase tracking-wide" style={{ color: COLORS[n.kind] }}>
           {n.kind}
         </div>
-        <div className="node-label">{n.label}</div>
+        <div className="text-xs text-foreground">{n.label}</div>
       </div>
     );
   };
+  const Arrow = () => <ArrowRight className="size-4 shrink-0 text-muted-foreground" />;
+
   return (
-    <div className="graph">
-      <div className="graph-col">{chip("capital")}</div>
-      <div className="graph-arrow">→</div>
-      <div className="graph-col">{chip("allocator")}</div>
-      <div className="graph-arrow">→</div>
-      <div className="graph-col legs">{legNodes.map((n) => chip(n.id))}</div>
-      <div className="graph-arrow">→</div>
-      <div className="graph-col">{chip("settlement")}</div>
-      {graph.nodes.some((n) => n.kind === "autoroll") && (
-        <>
-          <div className="graph-arrow">→</div>
-          <div className="graph-col">{chip("autoroll")}</div>
-        </>
-      )}
-      <div className="graph-arrow">→</div>
-      <div className="graph-col">{chip("exit")}</div>
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm">Strategy graph</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-wrap items-center gap-2">
+        <Chip id="capital" />
+        <Arrow />
+        <Chip id="allocator" />
+        <Arrow />
+        <div className="flex flex-col gap-2">
+          {legNodes.map((n) => (
+            <Chip key={n.id} id={n.id} />
+          ))}
+        </div>
+        <Arrow />
+        <Chip id="settlement" />
+        {hasRoll && (
+          <>
+            <Arrow />
+            <Chip id="autoroll" />
+          </>
+        )}
+        <Arrow />
+        <Chip id="exit" />
+      </CardContent>
+    </Card>
   );
 }

@@ -1,15 +1,15 @@
 import { fileURLToPath, URL } from "node:url";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 
 const pkg = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
   resolve: {
-    // Alias workspace packages to their TS source so edits hot-reload with no
-    // rebuild. Order matters: the more specific subpath must come first.
     alias: [
+      { find: "@/", replacement: pkg("./src/") },
       { find: "@deepforge/config/market", replacement: pkg("../../packages/config/src/market.ts") },
       { find: "@deepforge/config", replacement: pkg("../../packages/config/src/index.ts") },
       { find: "@deepforge/ir", replacement: pkg("../../packages/ir/src/index.ts") },
@@ -21,9 +21,6 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    proxy: {
-      // The intent endpoint is served by server.mjs (holds the OpenRouter key).
-      "/api": "http://localhost:8787",
-    },
+    proxy: { "/api": "http://localhost:8787" },
   },
 });

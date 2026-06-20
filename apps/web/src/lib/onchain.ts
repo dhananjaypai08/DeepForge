@@ -71,7 +71,7 @@ export async function deployStrategy(
   const coins = await getQuoteCoins(ctx(), sender);
   if (coins.totalBalanceBase < BigInt(execPlan.totalQuoteBaseUnits)) {
     throw new Error(
-      "insufficient dUSDC — request testnet dUSDC via the DeepBook Predict token form",
+      "insufficient dUSDC - request testnet dUSDC via the DeepBook Predict token form",
     );
   }
   const tx = buildExecutionPTB(ctx(), execPlan, {

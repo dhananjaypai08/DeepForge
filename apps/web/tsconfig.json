@@ -9,7 +9,8 @@
     "moduleResolution": "Bundler",
     "noEmit": true,
     "verbatimModuleSyntax": false,
-    "types": ["node"]
+    "types": ["node"],
+    "paths": { "@/*": ["./src/*"] }
   },
   "include": ["src/**/*"]
 }

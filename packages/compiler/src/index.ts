@@ -29,7 +29,13 @@ const SHORT_EXPIRY_WARN_MS = 5 * 60_000;
  * near-dead oracle has ~zero implied vol, so ATM strikes price at 0/1 and the
  * protocol can't quote them. We want a live, tradeable cycle.
  */
-const SELECT_MIN_TTE_MS = 3 * 60_000;
+const SELECT_MIN_TTE_MS = 10 * 60_000;
+/**
+ * When the IR doesn't specify a horizon, aim for an oracle ~45m out. A
+ * near-expiry oracle has ~zero implied vol, so any range is ~certain and prices
+ * at par (no edge); a mid-dated cycle has enough vol to be tradeable.
+ */
+const DEFAULT_HORIZON_MS = 45 * 60_000;
 
 /**
  * Select the oracle to use: matching underlying + ACTIVE, and whose expiry best
@@ -55,12 +61,9 @@ export function selectOracle(
       error: `no tradeable ${ir.asset} oracle available right now (all are settled or about to expire) — try again in a moment`,
     };
   }
-  const target =
-    ir.expiry.mode === "rolling" && ir.expiry.horizonMs
-      ? ctx.nowMs + ir.expiry.horizonMs
-      : ir.expiry.horizonMs
-        ? ctx.nowMs + ir.expiry.horizonMs
-        : ctx.nowMs; // "nearest" => smallest future expiry
+  const target = ir.expiry.horizonMs
+    ? ctx.nowMs + ir.expiry.horizonMs
+    : ctx.nowMs + DEFAULT_HORIZON_MS; // no horizon => aim mid-dated (real vol)
   const oracle = candidates.reduce((best, o) =>
     Math.abs(o.expiryMs - target) < Math.abs(best.expiryMs - target) ? o : best,
   );
