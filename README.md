@@ -1,6 +1,14 @@
+<div align="center">
+
+<img src="docs/brand/deepforge-logo.png" alt="DeepForge" width="120" />
+
 # DeepForge
 
 **The programming language & development environment for DeepBook Predict.**
+
+`Live on Sui Testnet` · `Compiler + IDE + CLI` · `Forkable on-chain strategies`
+
+</div>
 
 > People don't think in transactions. They think in intent. DeepForge compiles
 > intent into programmable financial strategies on DeepBook Predict.
@@ -25,6 +33,44 @@ intent / *.deepforge.yaml
    → Programmable Transaction Block → mint / range / supply
    → forkable, versioned on-chain Strategy object
 ```
+
+## System design
+
+DeepBook Predict is the instruction set; DeepForge is the compiler on top. Three
+front-ends lower to one typed Financial IR, a deterministic core prices/simulates/
+scores it, and the SDK lands real transactions and mints forkable Strategy objects.
+
+```mermaid
+flowchart LR
+  subgraph FE["Front-ends — one typed artifact"]
+    I["Intent (English)"]
+    V["Visual builder"]
+    D["DSL (*.deepforge.yaml)"]
+  end
+  IR["Financial IR (typed)"]
+  I --> IR
+  V --> IR
+  D --> IR
+  subgraph CORE["Deterministic core packages"]
+    C["compiler (IR -> graph -> plan)"]
+    S["simulator (SVI / Black-Scholes)"]
+    R["risk (live vault state)"]
+    SDK["predict-sdk (PTB + devInspect)"]
+  end
+  IR --> C --> S
+  C --> R
+  C --> SDK
+  subgraph CHAIN["Sui Testnet"]
+    PRED["DeepBook Predict (mint / range / supply, SVI oracle, PLP)"]
+    STRAT["deepforge::strategy (publish / fork / events)"]
+  end
+  SDK --> PRED
+  SDK --> STRAT
+  PRED -.->|"devInspect (no gas) quotes"| SDK
+```
+
+The compile flow — and a fuller architecture diagram, plus ready-to-paste Excalidraw
+prompts — live in [`docs/DIAGRAMS.md`](docs/DIAGRAMS.md).
 
 ## Live on testnet - nothing mocked
 
@@ -68,3 +114,12 @@ node apps/cli/dist/cli.js publish examples/btc-range.deepforge.yaml   # mint Str
 
 The compiler, simulator, and risk engine are deterministic - the LLM only turns
 English into the typed strategy file; all financial logic is code.
+
+## Docs & pitch
+
+- [`docs/PRESENTATION.md`](docs/PRESENTATION.md) - slide-by-slide deck content, a
+  6-minute live demo script covering every feature, and a judge Q&A cheat-sheet.
+- [`docs/DEMO.md`](docs/DEMO.md) - the original demo walkthrough.
+- [`docs/DIAGRAMS.md`](docs/DIAGRAMS.md) - system architecture + compile-flow
+  diagrams (Mermaid + Excalidraw AI prompts) for the deck and README.
+- [`docs/brand/`](docs/brand) - 1:1 project logo (submission-ready PNG).

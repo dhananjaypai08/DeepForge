@@ -207,43 +207,63 @@ export function App({ onHome }: { onHome?: () => void } = {}) {
     { key: "activity", label: "Activity", icon: ActivityIcon },
   ];
 
+  const sectionMeta: Record<Section, { title: string; sub: string }> = {
+    studio: { title: "Studio", sub: "Compose, compile, and execute strategies live" },
+    market: { title: "Marketplace", sub: "Forkable on-chain Strategy objects" },
+    activity: { title: "Activity", sub: "Your on-chain deploys, publishes and forks" },
+  };
+
   return (
     <div className="flex min-h-screen bg-background text-foreground">
       {/* Sidebar */}
-      <aside className="fixed inset-y-0 left-0 flex w-60 flex-col border-r border-sidebar-border bg-sidebar p-4">
+      <aside className="fixed inset-y-0 left-0 flex w-60 flex-col border-r border-sidebar-border bg-sidebar/80 p-4 backdrop-blur-xl">
         <button
           onClick={() => onHome?.()}
-          className="mb-6 flex items-center gap-2 text-left"
+          className="mb-6 flex items-center gap-2 text-left transition-opacity hover:opacity-80"
         >
           <Logo size={32} className="rounded-md" />
           <div>
-            <div className="text-sm font-semibold leading-tight">DeepForge</div>
+            <div className="text-sm font-semibold leading-tight tracking-tight">DeepForge</div>
             <div className="text-[10px] text-muted-foreground">compiler for DeepBook Predict</div>
           </div>
         </button>
         <nav className="flex flex-col gap-1">
-          {nav.map((n) => (
-            <button
-              key={n.key}
-              onClick={() => setSection(n.key)}
-              className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${
-                section === n.key
-                  ? "bg-sidebar-accent text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <n.icon className="size-4" />
-              {n.label}
-            </button>
-          ))}
+          {nav.map((n) => {
+            const active = section === n.key;
+            return (
+              <button
+                key={n.key}
+                onClick={() => setSection(n.key)}
+                className={`relative flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${
+                  active
+                    ? "bg-sidebar-accent text-foreground"
+                    : "text-muted-foreground hover:bg-sidebar-accent/40 hover:text-foreground"
+                }`}
+              >
+                {active && (
+                  <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-primary" />
+                )}
+                <n.icon className={`size-4 ${active ? "text-primary" : ""}`} />
+                {n.label}
+              </button>
+            );
+          })}
         </nav>
-        <div className="mt-auto text-[10px] text-muted-foreground">Sui Testnet · live</div>
+        {/* <div className="mt-auto flex items-center gap-2 rounded-md border border-border/60 bg-secondary/30 px-3 py-2 text-[10px] text-muted-foreground">
+          <span className="live-dot inline-block size-1.5 rounded-full bg-primary" />
+          Sui Testnet · live
+        </div> */}
       </aside>
 
       {/* Main */}
       <div className="ml-60 flex flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-border px-6 py-3">
-          <h1 className="text-lg font-semibold capitalize">{section}</h1>
+        <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-background/70 px-6 py-3 backdrop-blur-xl">
+          <div>
+            <h1 className="text-lg font-semibold leading-tight tracking-tight">
+              {sectionMeta[section].title}
+            </h1>
+            <p className="text-xs text-muted-foreground">{sectionMeta[section].sub}</p>
+          </div>
           <ConnectButton />
         </header>
         <main className="flex-1 overflow-auto p-6">
@@ -335,9 +355,16 @@ export function App({ onHome }: { onHome?: () => void } = {}) {
 
               <div className="flex flex-col gap-4">
                 {!result && Object.keys(stages).length === 0 && (
-                  <div className="rounded-lg border border-dashed border-border p-14 text-center text-muted-foreground">
-                    Compile a strategy to see the pipeline, math, simulation and risk - all from live
-                    testnet data.
+                  <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/40 px-8 py-20 text-center">
+                    <div className="mb-4 flex size-12 items-center justify-center rounded-xl border border-primary/20 bg-primary/10">
+                      <LayoutGrid className="size-6 text-primary" />
+                    </div>
+                    <p className="text-sm font-medium">Nothing compiled yet</p>
+                    <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+                      Describe a view or edit the strategy, then{" "}
+                      <span className="text-foreground">Compile &amp; Simulate</span> to see the
+                      pipeline, live volatility math, simulation and risk — all from live testnet data.
+                    </p>
                   </div>
                 )}
                 {Object.keys(stages).length > 0 && <PipelineView stages={stages} />}
@@ -425,7 +452,7 @@ function Marketplace({
           <div className="text-sm text-muted-foreground">No published strategies yet.</div>
         )}
         {items.map((s) => (
-          <Card key={s.id}>
+          <Card key={s.id} className="card-hover">
             <CardHeader>
               <CardTitle className="flex items-center justify-between text-sm">
                 {s.name}
