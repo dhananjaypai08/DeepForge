@@ -121,7 +121,7 @@ export function predictTargets(pkg: string) {
  * Override via DEEPFORGE_PACKAGE_ID env when you redeploy.
  */
 export const DEEPFORGE_STRATEGY_PACKAGE_TESTNET =
-  "0x1269aef399929af4e689c3d92978f40cfde79412e3557bf3e415f04be016b392";
+  "0xe7432b172c7bc3be90f87a2cf7e81cd936fb737bea2109f08c68e090a1eb8ae3";
 
 /** Resolve the DeepForge package id (env override wins). */
 export function deepforgePackageId(envOverride?: string): string {
