@@ -125,6 +125,12 @@ export function App({ onHome }: { onHome?: () => void } = {}) {
 
   function humanize(e: unknown): string {
     const msg = (e as Error)?.message ?? String(e);
+    if (/assert_mintable_ask|abort code: 7/i.test(msg)) {
+      return (
+        "A leg's price is at the protocol's mintable cap (the outcome is near-certain, so it can't " +
+        "be traded). Tighten the range or add a directional leg, then recompile and retry."
+      );
+    }
     if (/password/i.test(msg)) {
       return (
         `Wallet reported a "password"/decrypt error. Gas was already verified, so this is a Slush ` +
@@ -151,6 +157,13 @@ export function App({ onHome }: { onHome?: () => void } = {}) {
     setBusy("Checking gas…");
     setError(undefined);
     try {
+      if (result.execPlan.nonMintable.length > 0) {
+        throw new Error(
+          `Can't deploy: ${result.execPlan.nonMintable.join(", ")} priced outside the protocol's ` +
+            `mintable band (the outcome is too certain to trade). Tighten the range or add a ` +
+            `directional leg, then recompile.`,
+        );
+      }
       await ensureGas();
       setBusy("Executing on testnet…");
       const digest = await deployStrategy(client, sign, result.execPlan, account.address);

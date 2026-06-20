@@ -51,4 +51,9 @@ export interface ExecutionPlan {
   steps: ExecStep[];
   /** Per-leg unit cost (ask), captured at quantize time for the simulator. */
   unitCosts: Record<number, number>;
+  /**
+   * Labels of mint/range legs whose ask falls outside the oracle's mintable
+   * band — the protocol's `mint` will abort on these (outcome too certain).
+   */
+  nonMintable: string[];
 }

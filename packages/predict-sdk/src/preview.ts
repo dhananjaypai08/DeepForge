@@ -45,6 +45,26 @@ function decodeTwoU64(res: Awaited<ReturnType<DeepforgeContext["client"]["devIns
   };
 }
 
+/** Read the oracle's mintable ask band [minAsk, maxAsk] (price fractions 0..1). */
+export async function readAskBounds(
+  ctx: DeepforgeContext,
+  oracleId: string,
+  sender: string = ZERO_ADDRESS,
+): Promise<{ minAsk: number; maxAsk: number }> {
+  const t = predictTargets(ctx.deployment.predictPackageId);
+  const tx = new Transaction();
+  tx.moveCall({
+    target: t.askBounds,
+    arguments: [tx.object(ctx.deployment.predictObjectId), tx.pure.id(oracleId)],
+  });
+  const res = await ctx.client.devInspectTransactionBlock({ sender, transactionBlock: tx });
+  const rv = res.results?.at(-1)?.returnValues;
+  if (!rv || rv.length < 2) throw new Error("ask_bounds returned no values");
+  const min = Number(BigInt(bcs.u64().parse(Uint8Array.from(rv[0]![0])))) / 1e9;
+  const max = Number(BigInt(bcs.u64().parse(Uint8Array.from(rv[1]![0])))) / 1e9;
+  return { minAsk: min, maxAsk: max };
+}
+
 /** Preview a binary mint/redeem via devInspect (no gas spent, exact cost). */
 export async function previewBinary(
   ctx: DeepforgeContext,

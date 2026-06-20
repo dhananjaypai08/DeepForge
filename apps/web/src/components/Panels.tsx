@@ -87,9 +87,17 @@ export function SimPanel({ sim }: { sim: SimulationReport }) {
           <Stat label="best" value={money(sim.bestUsd)} tone="good" />
           <Stat label="expected" value={money(sim.expectedUsd)} />
           <Stat label="worst" value={money(sim.worstUsd)} tone="bad" />
+          <Stat label="P(win)" value={`${(sim.probNoLoss * 100).toFixed(0)}%`} />
           <Stat label="P(profit)" value={`${(sim.probProfit * 100).toFixed(0)}%`} />
           <Stat label="capital@risk" value={`${(sim.capitalAtRisk * 100).toFixed(0)}%`} />
         </div>
+        {sim.noEdge && (
+          <div className="mb-3 rounded-md border border-warning/40 bg-warning/10 p-3 text-xs text-warning">
+            No edge: this outcome is near-certain at the current volatility, so it is priced at
+            roughly fair value - you win ~{(sim.probNoLoss * 100).toFixed(0)}% of the time but only
+            break even. Tighten the range (smaller width) or add a directional leg for real upside.
+          </div>
+        )}
         <div className="h-28 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>

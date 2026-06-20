@@ -36,6 +36,10 @@ export interface SimulationReport {
   probProfit: number;
   /** Worst-case loss as a fraction of deployed capital (0..1). */
   capitalAtRisk: number;
+  /** Probability the position ends at break-even or better (P[pnl >= 0]). */
+  probNoLoss: number;
+  /** True when the outcome is near-certain but priced at par (no real upside). */
+  noEdge: boolean;
   legs: LegSim[];
   histogram: HistogramBin[];
   explanation: string;
@@ -117,17 +121,22 @@ export function simulate(
 
   let expectedUsd = 0;
   let probProfit = 0;
+  let probNoLoss = 0;
   let bestUsd = -Infinity;
   let worstUsd = Infinity;
   for (const b of histogram) {
     expectedUsd += b.prob * b.pnlUsd;
-    if (b.pnlUsd > 0) probProfit += b.prob;
+    if (b.pnlUsd > 1e-9) probProfit += b.prob;
+    if (b.pnlUsd >= -1e-9) probNoLoss += b.prob;
     if (b.pnlUsd > bestUsd) bestUsd = b.pnlUsd;
     if (b.pnlUsd < worstUsd) worstUsd = b.pnlUsd;
   }
 
   const capital = baseUnitsToDollars(plan.capitalBaseUnits);
   const capitalAtRisk = capital > 0 ? Math.min(1, Math.max(0, -worstUsd) / capital) : 0;
+  // No edge: the upside is a rounding error relative to what's risked, i.e. the
+  // outcome is near-certain and the protocol priced it at fair value.
+  const noEdge = totalCostUsd > 0 && bestUsd <= 0.02 * totalCostUsd;
 
   return {
     oracleId: plan.oracleId,
@@ -137,7 +146,9 @@ export function simulate(
     expectedUsd,
     worstUsd,
     probProfit,
+    probNoLoss,
     capitalAtRisk,
+    noEdge,
     legs: legs.map(({ leg: _leg, ...rest }) => rest),
     histogram,
     explanation: explain(plan, legs, {
@@ -146,6 +157,7 @@ export function simulate(
       worstUsd,
       probProfit,
       capitalAtRisk,
+      noEdge,
     }),
   };
 }
@@ -179,6 +191,7 @@ function explain(
     worstUsd: number;
     probProfit: number;
     capitalAtRisk: number;
+    noEdge: boolean;
   },
 ): string {
   const parts: string[] = [];
@@ -196,8 +209,9 @@ function explain(
     }
   }
   const hedges = legs.filter((l) => /HEDGE/.test(l.label));
-  const hedgeNote = hedges.length
-    ? ` A hedge leg caps left-tail drawdown.`
+  const hedgeNote = hedges.length ? ` A hedge leg caps left-tail drawdown.` : "";
+  const edgeNote = agg.noEdge
+    ? ` Note: this outcome is near-certain at the current volatility, so the protocol prices it at roughly fair value - you win most of the time but only break even. Tighten the range or add a directional leg for real upside.`
     : "";
   return (
     `This strategy ${parts.join("; ")}.` +
@@ -206,7 +220,8 @@ function explain(
       agg.worstUsd,
     )} (${(agg.capitalAtRisk * 100).toFixed(0)}% of capital). Probability of profit ${(
       agg.probProfit * 100
-    ).toFixed(0)}%.`
+    ).toFixed(0)}%.` +
+    edgeNote
   );
 }
 

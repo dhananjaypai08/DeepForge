@@ -1,7 +1,7 @@
 import { QUOTE_UNIT } from "@deepforge/config";
 import type { LogicalPlan } from "@deepforge/compiler";
 import type { DeepforgeContext } from "./client.js";
-import { previewBinary, previewRange } from "./preview.js";
+import { previewBinary, previewRange, readAskBounds } from "./preview.js";
 import type { ExecStep, ExecutionPlan } from "./types.js";
 
 /** $1 of payoff face, used as the linear price probe. */
@@ -24,8 +24,27 @@ export async function buildExecutionPlan(
 ): Promise<ExecutionPlan> {
   const steps: ExecStep[] = [];
   const unitCosts: Record<number, number> = {};
+  const nonMintable: string[] = [];
   let depositBase = 0n;
   let supplyBase = 0n;
+
+  // The oracle's mintable ask band — mint aborts (assert_mintable_ask) on legs
+  // priced outside it (e.g. near-certain outcomes pinned at the cap).
+  const hasTrades = plan.legs.some((l) => l.kind !== "plp");
+  let bounds = { minAsk: 0.01, maxAsk: 0.99 };
+  if (hasTrades) {
+    try {
+      bounds = await readAskBounds(ctx, plan.oracleId, opts.sender);
+    } catch {
+      /* fall back to protocol defaults */
+    }
+  }
+  const flagIfUnmintable = (i: number, label: string) => {
+    const ask = unitCosts[i];
+    if (ask !== undefined && (ask > bounds.maxAsk + 1e-9 || ask < bounds.minAsk - 1e-9)) {
+      nonMintable.push(label);
+    }
+  };
 
   for (let i = 0; i < plan.legs.length; i++) {
     const leg = plan.legs[i]!;
@@ -52,6 +71,7 @@ export async function buildExecutionPlan(
         const actual = await previewBinary(ctx, key, quantity, opts.sender);
         depositBase += actual.mintCostBase;
         unitCosts[i] = Number(actual.mintCostBase) / Number(quantity);
+        flagIfUnmintable(i, leg.label);
         steps.push({
           op: "mint",
           legLabel: leg.label,
@@ -77,6 +97,7 @@ export async function buildExecutionPlan(
       const actual = await previewRange(ctx, key, quantity, opts.sender);
       depositBase += actual.mintCostBase;
       unitCosts[i] = Number(actual.mintCostBase) / Number(quantity);
+      flagIfUnmintable(i, leg.label);
       steps.push({
         op: "mint_range",
         legLabel: leg.label,
@@ -112,6 +133,7 @@ export async function buildExecutionPlan(
     totalQuoteBaseUnits: (bufferedDeposit + supplyBase).toString(),
     steps,
     unitCosts,
+    nonMintable,
   };
 }
 
