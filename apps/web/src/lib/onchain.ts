@@ -115,6 +115,11 @@ function extractStrategyId(res: SuiTransactionBlockResponse): string | undefined
   return created && "objectId" in created ? created.objectId : undefined;
 }
 
+export interface PublishResult {
+  id: string;
+  digest: string;
+}
+
 /** Mint a new on-chain Strategy object. */
 export async function publishStrategy(
   client: SuiClient,
@@ -123,7 +128,7 @@ export async function publishStrategy(
   irHash: string,
   risk: RiskReport,
   sim: SimulationReport,
-): Promise<string> {
+): Promise<PublishResult> {
   const pkg = deepforgePackageId();
   const tx = new Transaction();
   tx.moveCall({
@@ -133,7 +138,7 @@ export async function publishStrategy(
   const res = await execAndWait(client, sign, tx);
   const id = extractStrategyId(res);
   if (!id) throw new Error("strategy object not found in result");
-  return id;
+  return { id, digest: res.digest };
 }
 
 /** Fork an existing Strategy object into a new derived strategy. */
@@ -145,7 +150,7 @@ export async function forkStrategy(
   irHash: string,
   risk: RiskReport,
   sim: SimulationReport,
-): Promise<string> {
+): Promise<PublishResult> {
   const pkg = deepforgePackageId();
   const tx = new Transaction();
   tx.moveCall({
@@ -155,7 +160,7 @@ export async function forkStrategy(
   const res = await execAndWait(client, sign, tx);
   const id = extractStrategyId(res);
   if (!id) throw new Error("forked strategy object not found in result");
-  return id;
+  return { id, digest: res.digest };
 }
 
 export interface StrategyCard {

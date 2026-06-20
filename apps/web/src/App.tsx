@@ -64,6 +64,9 @@ export function App({ onHome }: { onHome?: () => void } = {}) {
   const [error, setError] = useState<string>();
   const [notice, setNotice] = useState<string>();
   const [forkParent, setForkParent] = useState<string>();
+  const [txs, setTxs] = useState<{ label: string; digest: string; objectId?: string }[]>([]);
+  const addTx = (t: { label: string; digest: string; objectId?: string }) =>
+    setTxs((prev) => [t, ...prev].slice(0, 8));
 
   async function compileIr(target: StrategyIR) {
     setBusy("Compiling + simulating against live testnet…");
@@ -167,7 +170,8 @@ export function App({ onHome }: { onHome?: () => void } = {}) {
       await ensureGas();
       setBusy("Executing on testnet…");
       const digest = await deployStrategy(client, sign, result.execPlan, account.address);
-      setNotice(`Executed on DeepBook Predict - digest ${digest}`);
+      addTx({ label: "Deploy: minted position", digest });
+      setNotice("Executed on DeepBook Predict.");
     } catch (e) {
       setError(humanize(e));
     } finally {
@@ -183,10 +187,11 @@ export function App({ onHome }: { onHome?: () => void } = {}) {
       await ensureGas();
       setBusy(forkParent ? "Forking strategy object…" : "Minting strategy object…");
       const irHash = hashIR(ir);
-      const id = forkParent
+      const { id, digest } = forkParent
         ? await forkStrategy(client, sign, forkParent, ir, irHash, result.risk, result.sim)
         : await publishStrategy(client, sign, ir, irHash, result.risk, result.sim);
-      setNotice(`${forkParent ? "Forked" : "Published"} Strategy object ${id}`);
+      addTx({ label: forkParent ? "Fork: minted Strategy" : "Publish: minted Strategy", digest, objectId: id });
+      setNotice(`${forkParent ? "Forked" : "Published"} Strategy object.`);
       setForkParent(undefined);
     } catch (e) {
       setError(humanize(e));
@@ -292,6 +297,40 @@ export function App({ onHome }: { onHome?: () => void } = {}) {
                       <Alert>Forking from {forkParent.slice(0, 10)}… - edit and publish.</Alert>
                     )}
                   </div>
+                )}
+                {txs.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-sm">Signed transactions</CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex flex-col gap-2">
+                      {txs.map((t, i) => (
+                        <div key={i} className="flex items-center justify-between gap-3 text-xs">
+                          <span className="text-muted-foreground">{t.label}</span>
+                          <span className="flex gap-3 font-mono">
+                            <a
+                              className="text-primary hover:underline"
+                              href={`https://suiscan.xyz/testnet/tx/${t.digest}`}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              tx {t.digest.slice(0, 8)}…
+                            </a>
+                            {t.objectId && (
+                              <a
+                                className="text-primary hover:underline"
+                                href={`https://suiscan.xyz/testnet/object/${t.objectId}`}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                object
+                              </a>
+                            )}
+                          </span>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
                 )}
               </div>
 
