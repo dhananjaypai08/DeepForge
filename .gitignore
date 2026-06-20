@@ -7,3 +7,4 @@ dist/
 move/deepforge/build/
 *.log
 coverage/
+docs/
