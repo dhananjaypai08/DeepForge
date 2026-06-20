@@ -4,16 +4,16 @@
 
 # DeepForge
 
-**The programming language & development environment for DeepBook Predict.**
+**The programming language & development environment for DeepBook.**
 
 `Live on Sui Testnet` · `Compiler + IDE + CLI` · `Forkable on-chain strategies`
 
 </div>
 
 > People don't think in transactions. They think in intent. DeepForge compiles
-> intent into programmable financial strategies on DeepBook Predict.
+> intent into programmable financial strategies on DeepBook.
 
-DeepBook Predict (live on Sui testnet) is a vol-surface-priced prediction market:
+DeepBook (live on Sui testnet) is a vol-surface-priced prediction market:
 binary up/down positions, vertical ranges, and a PLP vault. Using it directly
 means hand-composing strikes, expiries, SVI pricing, and settlement. DeepForge
 raises the altitude: you express a strategy as **intent** (English, a visual
@@ -21,67 +21,31 @@ graph, or a YAML file) and it compiles down to validated, simulated, risk-scored
 executable on-chain transactions.
 
 The declarative `*.deepforge.yaml` file is the artifact everything runs from -
-written by hand or generated from a prompt - then **`plan`** (dry-run: priced &
-simulated) and **`apply`** (executed), exactly like `terraform plan` / `apply`.
-
-```
-intent / *.deepforge.yaml
-   → strategy graph (DAG)
-   → resolve strikes against the live oracle
-   → price every leg on-chain (devInspect, no gas)
-   → simulate payoff distribution + score risk
-   → Programmable Transaction Block → mint / range / supply
-   → forkable, versioned on-chain Strategy object
-```
+written by hand or generated from a prompt - then `plan` (dry-run: priced &
+simulated) and `apply` (executed), exactly like `terraform plan` / `apply`.
 
 ## System design
 
-DeepBook Predict is the instruction set; DeepForge is the compiler on top. Three
-front-ends lower to one typed Financial IR, a deterministic core prices/simulates/
-scores it, and the SDK lands real transactions and mints forkable Strategy objects.
+DeepBook is the instruction set; DeepForge is the compiler on top. Three
+front-ends lower to one typed Financial IR, a deterministic core prices, simulates
+and scores it, and the SDK lands real transactions and mints forkable Strategy
+objects.
 
-```mermaid
-flowchart LR
-  subgraph FE["Front-ends — one typed artifact"]
-    I["Intent (English)"]
-    V["Visual builder"]
-    D["DSL (*.deepforge.yaml)"]
-  end
-  IR["Financial IR (typed)"]
-  I --> IR
-  V --> IR
-  D --> IR
-  subgraph CORE["Deterministic core packages"]
-    C["compiler (IR -> graph -> plan)"]
-    S["simulator (SVI / Black-Scholes)"]
-    R["risk (live vault state)"]
-    SDK["predict-sdk (PTB + devInspect)"]
-  end
-  IR --> C --> S
-  C --> R
-  C --> SDK
-  subgraph CHAIN["Sui Testnet"]
-    PRED["DeepBook Predict (mint / range / supply, SVI oracle, PLP)"]
-    STRAT["deepforge::strategy (publish / fork / events)"]
-  end
-  SDK --> PRED
-  SDK --> STRAT
-  PRED -.->|"devInspect (no gas) quotes"| SDK
-```
+![DeepForge system architecture and compile flow](docs/diagrams/system-architecture.png)
 
-The compile flow — and a fuller architecture diagram, plus ready-to-paste Excalidraw
-prompts — live in [`docs/DIAGRAMS.md`](docs/DIAGRAMS.md).
+The diagram source, the compile-flow variant, and ready-to-paste Excalidraw prompts
+live in [`docs/DIAGRAMS.md`](docs/DIAGRAMS.md).
 
-## Live on testnet - nothing mocked
+## Live on testnet
 
-- Reads live oracles + the SVI volatility surface, and **prices trades via
-  `devInspect`** against the real Predict contract.
+- Reads live oracles and the SVI volatility surface, and prices trades via
+  `devInspect` against the real Predict contract.
 - Executes real `predict::mint` / `mint_range` / `supply` transactions
   (confirmed `RangeMinted` on testnet from the web app).
 - Compiled strategies mint a forkable `deepforge::strategy` object (package
   published to testnet) that shows up in the marketplace and can be forked.
-- Every number traces to a real source: cost = on-chain `devInspect`; the payoff
-  distribution = the protocol's own SVI price function; risk = live vault state.
+- Every number traces to a real source: cost from on-chain `devInspect`, the payoff
+  distribution from the protocol's own SVI price function, risk from live vault state.
 
 ## Run it
 
@@ -107,7 +71,7 @@ node apps/cli/dist/cli.js publish examples/btc-range.deepforge.yaml   # mint Str
 ## What you need for live execution
 
 - **Testnet SUI** for gas (faucet.sui.io). Gas is paid in SUI, not dUSDC.
-- **dUSDC** for deploys - request via the DeepBook Predict testnet token form.
+- **dUSDC** for deploys - request via the DeepBook testnet token form.
 - **A key-based wallet** (seed phrase). zkLogin/Google accounts in Slush can fail
   to sign; a passphrase account or the CLI signs reliably.
 - **`OPENROUTER_API_KEY`** for the English-intent mode only. See `.env.example`.
