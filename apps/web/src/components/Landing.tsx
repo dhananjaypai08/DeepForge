@@ -7,6 +7,7 @@ import {
   ShieldCheck,
   Terminal,
 } from "lucide-react";
+import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -76,9 +77,7 @@ export function Landing({ onLaunch }: { onLaunch: () => void }) {
       <header className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
           <div className="flex items-center gap-2">
-            <div className="flex size-8 items-center justify-center rounded-md bg-primary font-semibold text-primary-foreground">
-              DF
-            </div>
+            <Logo size={32} className="rounded-md" />
             <span className="font-semibold">DeepForge</span>
           </div>
           <Button onClick={onLaunch} className="gap-1.5">

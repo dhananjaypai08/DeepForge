@@ -1,0 +1,29 @@
+/**
+ * DeepForge mark — a green badge with stacked ascending chevrons, reading as
+ * "forge / compile up" (intent rising into structure). Identical to the favicon
+ * (apps/web/public/favicon.svg) so the brand is consistent everywhere.
+ */
+export function Logo({ size = 32, className }: { size?: number; className?: string }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 32 32"
+      className={className}
+      role="img"
+      aria-label="DeepForge"
+    >
+      <rect width="32" height="32" rx="7" fill="#16D196" />
+      <g
+        fill="none"
+        stroke="#08121F"
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M9 14 L16 8 L23 14" />
+        <path d="M9 21 L16 15 L23 21" />
+      </g>
+    </svg>
+  );
+}

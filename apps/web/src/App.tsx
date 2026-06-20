@@ -19,6 +19,7 @@ import { GraphView } from "@/components/GraphView";
 import { MathPanel } from "@/components/MathPanel";
 import { ActionsPanel, RiskPanel, SimPanel } from "@/components/Panels";
 import { PipelineView } from "@/components/PipelineView";
+import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -214,9 +215,7 @@ export function App({ onHome }: { onHome?: () => void } = {}) {
           onClick={() => onHome?.()}
           className="mb-6 flex items-center gap-2 text-left"
         >
-          <div className="flex size-8 items-center justify-center rounded-md bg-primary font-semibold text-primary-foreground">
-            DF
-          </div>
+          <Logo size={32} className="rounded-md" />
           <div>
             <div className="text-sm font-semibold leading-tight">DeepForge</div>
             <div className="text-[10px] text-muted-foreground">compiler for DeepBook Predict</div>
