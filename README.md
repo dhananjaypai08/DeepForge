@@ -33,9 +33,6 @@ objects.
 
 ![DeepForge system architecture and compile flow](docs/diagrams/system-architecture.png)
 
-The diagram source, the compile-flow variant, and ready-to-paste Excalidraw prompts
-live in [`docs/DIAGRAMS.md`](docs/DIAGRAMS.md).
-
 ## Live on testnet
 
 - Reads live oracles and the SVI volatility surface, and prices trades via
@@ -78,12 +75,3 @@ node apps/cli/dist/cli.js publish examples/btc-range.deepforge.yaml   # mint Str
 
 The compiler, simulator, and risk engine are deterministic - the LLM only turns
 English into the typed strategy file; all financial logic is code.
-
-## Docs & pitch
-
-- [`docs/PRESENTATION.md`](docs/PRESENTATION.md) - slide-by-slide deck content, a
-  6-minute live demo script covering every feature, and a judge Q&A cheat-sheet.
-- [`docs/DEMO.md`](docs/DEMO.md) - the original demo walkthrough.
-- [`docs/DIAGRAMS.md`](docs/DIAGRAMS.md) - system architecture + compile-flow
-  diagrams (Mermaid + Excalidraw AI prompts) for the deck and README.
-- [`docs/brand/`](docs/brand) - 1:1 project logo (submission-ready PNG).
