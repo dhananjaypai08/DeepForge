@@ -42,7 +42,11 @@ export interface ExecutionPlan {
   expiryMs: number;
   quoteType: string;
   plpType: string;
-  /** dUSDC to deposit into the manager to fund all mint/range legs. */
+  /** Exact previewed cost of all mint/range legs (no buffer). */
+  legsCostBaseUnits: string;
+  /** Slippage buffer applied to the deposit, in basis points. */
+  slippageBps: number;
+  /** dUSDC to deposit into the manager to fund all mint/range legs (cost + buffer). */
   depositBaseUnits: string;
   /** dUSDC routed directly into PLP supply. */
   supplyBaseUnits: string;

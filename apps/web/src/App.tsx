@@ -13,6 +13,7 @@ import {
   Store,
   UploadCloud,
 } from "lucide-react";
+import { baseUnitsToDollars } from "@deepforge/config/market";
 import { exampleIR, hashIR, validateIR, type StrategyIR } from "@deepforge/ir";
 import { Editor, type Mode } from "@/components/Editor";
 import { GraphView } from "@/components/GraphView";
@@ -293,7 +294,10 @@ export function App({ onHome }: { onHome?: () => void } = {}) {
                         disabled={!!busy || !result || !account}
                         className="gap-1.5"
                       >
-                        <Rocket className="size-4" /> Deploy
+                        <Rocket className="size-4" />
+                        {result
+                          ? `Deploy · ${baseUnitsToDollars(BigInt(result.execPlan.totalQuoteBaseUnits)).toFixed(2)} dUSDC`
+                          : "Deploy"}
                       </Button>
                       <Button
                         variant="outline"

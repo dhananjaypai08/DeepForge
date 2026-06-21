@@ -117,7 +117,7 @@ export async function buildExecutionPlan(
   // tick up between this devInspect preview and on-chain execution, and mint
   // pulls the *actual* cost from the manager — too tight a deposit aborts the
   // withdraw. Any unused buffer simply stays in the manager (withdrawable).
-  const SLIPPAGE_BPS = 500n; // 5%
+  const SLIPPAGE_BPS = 300n; // 3%
   const bufferedDeposit =
     depositBase === 0n ? 0n : depositBase + (depositBase * SLIPPAGE_BPS) / 10_000n;
 
@@ -128,6 +128,8 @@ export async function buildExecutionPlan(
     expiryMs: plan.expiryMs,
     quoteType: ctx.deployment.dusdcType,
     plpType: ctx.deployment.plpType,
+    legsCostBaseUnits: depositBase.toString(),
+    slippageBps: Number(SLIPPAGE_BPS),
     depositBaseUnits: bufferedDeposit.toString(),
     supplyBaseUnits: supplyBase.toString(),
     totalQuoteBaseUnits: (bufferedDeposit + supplyBase).toString(),

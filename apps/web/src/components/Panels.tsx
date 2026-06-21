@@ -40,12 +40,39 @@ export function ActionsPanel({ plan }: { plan: ExecutionPlan }) {
             ))}
           </TableBody>
         </Table>
-        <div className="mt-2 text-xs text-muted-foreground">
-          deposit {usd(plan.depositBaseUnits)} · supply {usd(plan.supplyBaseUnits)} · total{" "}
-          <span className="text-foreground">{usd(plan.totalQuoteBaseUnits)} dUSDC</span>
+        <div className="mt-3 flex flex-col gap-1 rounded-md border border-border bg-secondary/30 p-3 text-xs">
+          <Row label="Positions cost (exact quote)" value={`${usd(plan.legsCostBaseUnits)} dUSDC`} />
+          {BigInt(plan.supplyBaseUnits) > 0n && (
+            <Row label="PLP supply" value={`${usd(plan.supplyBaseUnits)} dUSDC`} />
+          )}
+          <Row
+            label={`Slippage buffer (+${(plan.slippageBps / 100).toFixed(0)}%)`}
+            value={`${usd(
+              (BigInt(plan.depositBaseUnits) - BigInt(plan.legsCostBaseUnits)).toString(),
+            )} dUSDC`}
+          />
+          <div className="mt-1 flex items-baseline justify-between border-t border-border pt-2">
+            <span className="font-semibold text-foreground">You sign / deposit</span>
+            <span className="font-mono text-base font-bold text-primary">
+              {usd(plan.totalQuoteBaseUnits)} dUSDC
+            </span>
+          </div>
         </div>
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          Mint pulls only the exact cost; the buffer absorbs price movement between this on-chain
+          quote and execution. Any unused buffer stays in your PredictManager and is withdrawable.
+        </p>
       </CardContent>
     </Card>
+  );
+}
+
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-mono">{value}</span>
+    </div>
   );
 }
 

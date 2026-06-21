@@ -28,10 +28,15 @@ export function renderActions(plan: ExecutionPlan): string {
       lines.push(`  • SUPPLY PLP ${usd(baseUnitsToDollars(BigInt(s.amountBaseUnits)))}`);
     }
   }
+  const buffer = BigInt(plan.depositBaseUnits) - BigInt(plan.legsCostBaseUnits);
   lines.push(
-    `  deposit=${usd(baseUnitsToDollars(BigInt(plan.depositBaseUnits)))} ` +
+    `  positions cost=${usd(baseUnitsToDollars(BigInt(plan.legsCostBaseUnits)))} ` +
+      `+${(plan.slippageBps / 100).toFixed(0)}% buffer=${usd(baseUnitsToDollars(buffer))} ` +
       `supply=${usd(baseUnitsToDollars(BigInt(plan.supplyBaseUnits)))} ` +
-      `total=${usd(baseUnitsToDollars(BigInt(plan.totalQuoteBaseUnits)))} dUSDC`,
+      `→ you sign ${usd(baseUnitsToDollars(BigInt(plan.totalQuoteBaseUnits)))} dUSDC`,
+  );
+  lines.push(
+    `  (mint pulls only the exact cost; unused buffer stays in your manager, withdrawable)`,
   );
   return lines.join("\n");
 }
